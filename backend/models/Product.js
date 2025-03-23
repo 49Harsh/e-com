@@ -20,11 +20,15 @@ const productSchema = new mongoose.Schema(
       max: [5, 'Rating cannot exceed 5']
     },
     size: {
-      type: String,
-      enum: {
-        values: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-        message: 'Please select correct size'
-      }
+      type: [String],
+      validate: {
+        validator: function(v) {
+          const validSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+          return v.every(size => validSizes.includes(size));
+        },
+        message: 'Please select valid sizes'
+      },
+      required: [true, 'Please select at least one size']
     },
     color: {
       type: String,
@@ -34,6 +38,23 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Please enter product price'],
       min: [0, 'Price must be positive']
+    },
+    compareAtPrice: {
+      type: Number,
+      min: [0, 'Compare at price must be positive']
+    },
+    cost: {
+      type: Number,
+      min: [0, 'Cost must be positive']
+    },
+    margin: {
+      type: Number,
+      default: function() {
+        if (this.price && this.cost) {
+          return ((this.price - this.cost) / this.price) * 100;
+        }
+        return 0;
+      }
     },
     stock: {
       type: Number,
@@ -66,5 +87,13 @@ const productSchema = new mongoose.Schema(
     }
   }
 );
+
+// Add a pre-save middleware to calculate margin
+productSchema.pre('save', function(next) {
+  if (this.price && this.cost) {
+    this.margin = ((this.price - this.cost) / this.price) * 100;
+  }
+  next();
+});
 
 module.exports = mongoose.model('Product', productSchema);

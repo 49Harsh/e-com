@@ -7,17 +7,28 @@ const ProductList = () => {
   const { products, loading, error } = useProducts();
 
   if (loading) {
-    return <div className="text-center py-8">Loading products...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-500">{error}</div>;
+    return (
+      <div className="text-center py-8 text-red-500">
+        <p className="text-lg font-medium">{error}</p>
+        <Link to="/add-product" className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+          Try Adding a Product
+        </Link>
+      </div>
+    );
   }
 
   if (products.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="mb-4">No products found.</p>
+        <p className="text-lg mb-4">No products found.</p>
         <Link to="/add-product" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
           Add Product
         </Link>
@@ -26,10 +37,13 @@ const ProductList = () => {
   }
 
   return (
-    <div>
+    <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold">Product List</h2>
-        <Link to="/add-product" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+        <Link 
+          to="/add-product" 
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        >
           Add Product
         </Link>
       </div>

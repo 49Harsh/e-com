@@ -3,22 +3,21 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    // Use a more robust connection string with explicit error handling
-    const conn = await mongoose.connect(process.env.MONGO_URI, {
+    if (!process.env.MONGO_URI) {
+      throw new Error('MONGO_URI is not defined in environment variables');
+    }
+
+    await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000 // Timeout after 5 seconds instead of the default 30
     });
     
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    console.log(`MongoDB Connected: ${mongoose.connection.host}`);
+    return true;
   } catch (error) {
-    console.error(`Error connecting to MongoDB: ${error.message}`);
-    console.log('Make sure MongoDB is running and the connection URI is correct');
-    // Don't immediately exit - allow for graceful fallback
-    // process.exit(1);
+    console.error(`MongoDB Connection Error: ${error.message}`);
     return false;
   }
-  return true;
 };
 
 module.exports = connectDB;

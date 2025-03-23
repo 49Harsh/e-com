@@ -10,17 +10,29 @@ const ProductForm = ({ product, isEditing = false }) => {
     title: '',
     description: '',
     price: '',
+    compareAtPrice: '',
+    cost: '',
     stock: '',
     category: '',
     color: '',
-    size: '',
+    size: [],
     rating: 0,
     featured: false,
-    images: [{ public_id: 'temp_id', url: 'https://via.placeholder.com/150' }]
+    images: []
   };
 
   const [formData, setFormData] = useState(initialState);
   const [errors, setErrors] = useState({});
+  const [imageFiles, setImageFiles] = useState([]);
+
+  const sizes = [
+    { value: 'XS', label: 'Extra Small (XS)' },
+    { value: 'S', label: 'Small (S)' },
+    { value: 'M', label: 'Medium (M)' },
+    { value: 'L', label: 'Large (L)' },
+    { value: 'XL', label: 'Extra Large (XL)' },
+    { value: 'XXL', label: 'Double XL (XXL)' }
+  ];
 
   useEffect(() => {
     if (isEditing && product) {
@@ -30,9 +42,33 @@ const ProductForm = ({ product, isEditing = false }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (name === 'size') {
+      const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
+      setFormData({
+        ...formData,
+        [name]: selectedOptions
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: type === 'checkbox' ? checked : value
+      });
+    }
+  };
+
+  const handleSizeChange = (size) => {
+    const currentSizes = [...formData.size];
+    const sizeIndex = currentSizes.indexOf(size);
+    
+    if (sizeIndex === -1) {
+      currentSizes.push(size);
+    } else {
+      currentSizes.splice(sizeIndex, 1);
+    }
+    
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value
+      size: currentSizes
     });
   };
 
@@ -44,7 +80,7 @@ const ProductForm = ({ product, isEditing = false }) => {
     if (!formData.stock || formData.stock < 0) newErrors.stock = 'Stock cannot be negative';
     if (!formData.category.trim()) newErrors.category = 'Category is required';
     if (!formData.color.trim()) newErrors.color = 'Color is required';
-    if (!formData.size) newErrors.size = 'Size is required';
+    if (formData.size.length === 0) newErrors.size = 'Size is required';
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -56,15 +92,44 @@ const ProductForm = ({ product, isEditing = false }) => {
     if (!validateForm()) return;
     
     try {
+      const formDataToSend = new FormData();
+      
+      // Append all form fields to FormData
+      Object.keys(formData).forEach(key => {
+        if (key === 'size') {
+          // Append each size separately
+          formData.size.forEach((size, index) => {
+            formDataToSend.append(`size[${index}]`, size);
+          });
+        } else if (key !== 'images') {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
+
+      // Append image files if any
+      if (imageFiles && imageFiles.length > 0) {
+        imageFiles.forEach(file => {
+          formDataToSend.append('images', file);
+        });
+      }
+
       if (isEditing) {
-        await editProduct(product._id, formData);
+        await editProduct(product._id, formDataToSend);
       } else {
-        await addProduct(formData);
+        await addProduct(formDataToSend);
       }
       navigate('/products');
     } catch (error) {
       console.error('Error submitting form:', error);
     }
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(price);
   };
 
   return (
@@ -97,7 +162,7 @@ const ProductForm = ({ product, isEditing = false }) => {
           </div>
           
           <div>
-            <label className="block mb-2 text-sm font-medium">Price</label>
+            <label className="block mb-2 text-sm font-medium">Price (₹)</label>
             <input
               type="number"
               name="price"
@@ -105,7 +170,44 @@ const ProductForm = ({ product, isEditing = false }) => {
               onChange={handleChange}
               className={`w-full p-2 border rounded ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
             />
+            {formData.price && (
+              <p className="text-sm text-gray-500 mt-1">
+                Formatted: {formatPrice(formData.price)}
+              </p>
+            )}
             {errors.price && <p className="text-red-500 text-sm mt-1">{errors.price}</p>}
+          </div>
+          
+          <div>
+            <label className="block mb-2 text-sm font-medium">Compare at Price (₹)</label>
+            <input
+              type="number"
+              name="compareAtPrice"
+              value={formData.compareAtPrice}
+              onChange={handleChange}
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+            {formData.compareAtPrice && (
+              <p className="text-sm text-gray-500 mt-1">
+                Formatted: {formatPrice(formData.compareAtPrice)}
+              </p>
+            )}
+          </div>
+          
+          <div>
+            <label className="block mb-2 text-sm font-medium">Cost (₹)</label>
+            <input
+              type="number"
+              name="cost"
+              value={formData.cost}
+              onChange={handleChange}
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+            {formData.cost && (
+              <p className="text-sm text-gray-500 mt-1">
+                Formatted: {formatPrice(formData.cost)}
+              </p>
+            )}
           </div>
           
           <div>
@@ -132,23 +234,36 @@ const ProductForm = ({ product, isEditing = false }) => {
             {errors.color && <p className="text-red-500 text-sm mt-1">{errors.color}</p>}
           </div>
           
-          <div>
-            <label className="block mb-2 text-sm font-medium">Size</label>
-            <select
-              name="size"
-              value={formData.size}
-              onChange={handleChange}
-              className={`w-full p-2 border rounded ${errors.size ? 'border-red-500' : 'border-gray-300'}`}
-            >
-              <option value="">Select Size</option>
-              <option value="XS">XS</option>
-              <option value="S">S</option>
-              <option value="M">M</option>
-              <option value="L">L</option>
-              <option value="XL">XL</option>
-              <option value="XXL">XXL</option>
-            </select>
-            {errors.size && <p className="text-red-500 text-sm mt-1">{errors.size}</p>}
+          <div className="col-span-2">
+            <label className="block mb-2 text-sm font-medium">Sizes</label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {sizes.map((size) => (
+                <div
+                  key={size.value}
+                  className={`
+                    p-3 border rounded-lg cursor-pointer transition-all
+                    ${formData.size.includes(size.value)
+                      ? 'bg-blue-50 border-blue-500 text-blue-700'
+                      : 'border-gray-300 hover:border-blue-400'
+                    }
+                  `}
+                  onClick={() => handleSizeChange(size.value)}
+                >
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.size.includes(size.value)}
+                      onChange={() => {}}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium">{size.label}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {errors.size && (
+              <p className="text-red-500 text-sm mt-1">{errors.size}</p>
+            )}
           </div>
           
           <div>
@@ -187,6 +302,19 @@ const ProductForm = ({ product, isEditing = false }) => {
             className={`w-full p-2 border rounded ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
           ></textarea>
           {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label className="block mb-2 text-sm font-medium">Product Images</label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={(e) => setImageFiles(Array.from(e.target.files))}
+              className="w-full p-2 border border-gray-300 rounded"
+            />
+          </div>
         </div>
         
         <div className="mt-6 flex justify-end space-x-4">

@@ -4,7 +4,17 @@ const Product = require('../models/Product');
 // Create new product   =>   POST /api/v1/products
 exports.createProduct = async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const productData = req.body;
+    
+    // If files were uploaded, add their paths to the product data
+    if (req.files) {
+      productData.images = req.files.map(file => ({
+        public_id: file.filename,
+        url: `/uploads/${file.filename}`
+      }));
+    }
+
+    const product = await Product.create(productData);
     
     res.status(201).json({
       success: true,
@@ -71,8 +81,23 @@ exports.updateProduct = async (req, res) => {
         message: 'Product not found'
       });
     }
+
+    const productData = req.body;
     
-    product = await Product.findByIdAndUpdate(req.params.id, req.body, {
+    // Handle size array properly
+    if (productData.size) {
+      productData.size = Array.isArray(productData.size) ? productData.size : [productData.size];
+    }
+
+    // If new files were uploaded, add their paths
+    if (req.files && req.files.length > 0) {
+      productData.images = req.files.map(file => ({
+        public_id: file.filename,
+        url: `/uploads/${file.filename}`
+      }));
+    }
+    
+    product = await Product.findByIdAndUpdate(req.params.id, productData, {
       new: true,
       runValidators: true
     });

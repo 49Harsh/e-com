@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const upload = require('../utils/multerConfig');
+const { protect } = require('../middleware/auth');
 
 // Import controller functions properly - ensure they exist
 const { 
@@ -10,8 +12,14 @@ const {
   deleteProduct
 } = require('../controllers/productController');
 
-// Make sure routes are properly defined with valid controller functions
-router.route('/products').get(getProducts).post(createProduct);
-router.route('/products/:id').get(getSingleProduct).put(updateProduct).delete(deleteProduct);
+// Public routes
+router.get('/', getProducts);
+router.get('/:id', getSingleProduct);
+
+// Protected routes
+router.use(protect);
+router.post('/', upload.array('images', 5), createProduct);
+router.put('/:id', upload.array('images', 5), updateProduct);
+router.delete('/:id', deleteProduct);
 
 module.exports = router;
