@@ -51,10 +51,12 @@ app.use((req, res, next) => {
 const productRoutes = require('./routes/productRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
+const cartRoutes = require('./routes/cartRoutes');
 
 // Mount routers
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/products', productRoutes); // Public product routes
+app.use('/api/v1/cart', cartRoutes);
 app.use('/api/v1/admin', adminRoutes); // Protected admin routes
 
 // Error handling middleware
