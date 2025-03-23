@@ -15,10 +15,16 @@ export const ProductProvider = ({ children }) => {
     setLoading(true);
     try {
       const data = await getProducts();
-      setProducts(data.products);
-      setError(null);
+      if (data.success) {
+        setProducts(data.products);
+        setError(null);
+      } else {
+        setError('Failed to fetch products');
+        toast.error('Failed to fetch products');
+      }
     } catch (err) {
-      setError('Failed to fetch products');
+      console.error('Error fetching products:', err);
+      setError('Failed to fetch products. Please try again later.');
       toast.error('Failed to fetch products');
     } finally {
       setLoading(false);

@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 // Register customer
 exports.registerCustomer = async (req, res) => {
@@ -129,7 +130,7 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate email & password
+    // Validate email and password
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -139,6 +140,7 @@ exports.login = async (req, res) => {
 
     // Check for user
     const user = await User.findOne({ email }).select('+password');
+
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -146,8 +148,9 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Check password
-    const isMatch = await user.matchPassword(password);
+    // Check if password matches
+    const isMatch = await bcrypt.compare(password, user.password);
+
     if (!isMatch) {
       return res.status(401).json({
         success: false,
@@ -155,11 +158,33 @@ exports.login = async (req, res) => {
       });
     }
 
-    sendTokenResponse(user, 200, res);
+    // Create token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE }
+    );
+
+    // Remove password from output
+    user.password = undefined;
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      message: 'Login successful'
+    });
   } catch (error) {
-    res.status(400).json({
+    console.error('Login error:', error);
+    res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Login failed',
+      error: error.message
     });
   }
 };

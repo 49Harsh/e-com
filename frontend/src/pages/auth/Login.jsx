@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { toast } from 'react-toastify';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -9,7 +10,6 @@ const Login = () => {
     email: '',
     password: ''
   });
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -19,16 +19,45 @@ const Login = () => {
     });
   };
 
+  const validateForm = () => {
+    if (!formData.email.trim()) {
+      toast.error('Please enter your email');
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      return false;
+    }
+
+    if (!formData.password) {
+      toast.error('Please enter your password');
+      return false;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    
+    if (!validateForm()) {
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      navigate('/');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to login');
+      const redirectPath = await login(formData.email, formData.password);
+      navigate(redirectPath);
+    } catch (error) {
+      console.error('Login error:', error);
     } finally {
       setLoading(false);
     }
@@ -49,11 +78,6 @@ const Login = () => {
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-              {error}
-            </div>
-          )}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
@@ -68,6 +92,7 @@ const Login = () => {
                 onChange={handleChange}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
+                disabled={loading}
               />
             </div>
             <div>
@@ -83,6 +108,7 @@ const Login = () => {
                 onChange={handleChange}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
+                disabled={loading}
               />
             </div>
           </div>

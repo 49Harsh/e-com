@@ -36,8 +36,11 @@ export const getProducts = async () => {
     const response = await jsonApi.get('/products');
     return response.data;
   } catch (error) {
-    console.error('Error fetching products:', error.response?.data || error.message);
-    throw error;
+    console.error('Error fetching products:', error);
+    if (error.response?.status === 404) {
+      throw new Error('Products not found');
+    }
+    throw new Error('Failed to fetch products. Please try again later.');
   }
 };
 
@@ -138,6 +141,27 @@ export const getUserOrders = async () => {
     return response.data;
   } catch (error) {
     console.error('Error fetching user orders:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// Admin order related API calls
+export const getAdminOrders = async () => {
+  try {
+    const response = await jsonApi.get('/orders/admin');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching admin orders:', error);
+    throw error;
+  }
+};
+
+export const updateOrderStatus = async (orderId, status) => {
+  try {
+    const response = await jsonApi.put(`/orders/${orderId}/status`, { status });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating order status:', error);
     throw error;
   }
 };

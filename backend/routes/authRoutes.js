@@ -11,6 +11,7 @@ const {
 const { protect } = require('../middleware/auth');
 
 // Public routes
+router.post('/register', registerCustomer);
 router.post('/register/customer', registerCustomer);
 router.post('/register/admin', registerAdmin);
 router.post('/login', login);

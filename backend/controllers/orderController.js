@@ -6,30 +6,7 @@ const User = require('../models/User');
 // Create new order
 exports.createOrder = async (req, res) => {
   try {
-    const { shippingAddress, saveAddress } = req.body;
-    
-    // Save address if requested
-    if (saveAddress) {
-      const user = await User.findById(req.user.id);
-      
-      // Add new address to user's addresses
-      user.addresses.push({
-        ...shippingAddress,
-        isDefault: user.addresses.length === 0 // Make first address default
-      });
-      
-      await user.save();
-    }
-
-    // Validate shipping address
-    if (!shippingAddress || !shippingAddress.fullName || !shippingAddress.address || 
-        !shippingAddress.city || !shippingAddress.state || !shippingAddress.pincode || 
-        !shippingAddress.phone) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide all shipping details'
-      });
-    }
+    const { shippingAddress } = req.body;
 
     // Get user's cart
     const cart = await Cart.findOne({ user: req.user.id }).populate('items.product');
@@ -39,16 +16,6 @@ exports.createOrder = async (req, res) => {
         success: false,
         message: 'Cart is empty'
       });
-    }
-
-    // Verify all products are in stock
-    for (const item of cart.items) {
-      if (item.product.stock < item.quantity) {
-        return res.status(400).json({
-          success: false,
-          message: `${item.product.title} is out of stock`
-        });
-      }
     }
 
     // Calculate total amount
@@ -115,12 +82,12 @@ exports.getUserOrders = async (req, res) => {
   }
 };
 
-// Get all orders (admin)
-exports.getAllOrders = async (req, res) => {
+// Get all orders (Admin)
+exports.getAdminOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .populate('user', 'name email')
-      .populate('items.product')
+      .populate('items.product', 'title price')
       .sort('-createdAt');
 
     res.status(200).json({
@@ -128,14 +95,41 @@ exports.getAllOrders = async (req, res) => {
       orders
     });
   } catch (error) {
+    console.error('Error in getAdminOrders:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Server Error'
     });
   }
 };
 
-// Update order status (admin)
+// Get order by ID
+exports.getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('user', 'name email')
+      .populate('items.product', 'title price images');
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server Error'
+    });
+  }
+};
+
+// Update order status
 exports.updateOrderStatus = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -147,6 +141,13 @@ exports.updateOrderStatus = async (req, res) => {
       });
     }
 
+    if (!['pending', 'processing', 'shipped', 'delivered', 'cancelled'].includes(req.body.status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid order status'
+      });
+    }
+
     order.status = req.body.status;
     await order.save();
 
@@ -155,9 +156,30 @@ exports.updateOrderStatus = async (req, res) => {
       order
     });
   } catch (error) {
+    console.error('Error updating order status:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Server Error'
+    });
+  }
+};
+
+// Get my orders
+exports.getMyOrders = async (req, res) => {
+  try {
+    const orders = await Order.find({ user: req.user.id })
+      .populate('items.product', 'title price images')
+      .sort('-createdAt');
+
+    res.status(200).json({
+      success: true,
+      orders
+    });
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch orders'
     });
   }
 }; 

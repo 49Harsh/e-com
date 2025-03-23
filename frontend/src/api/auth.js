@@ -68,16 +68,21 @@ export const registerAdmin = async (userData) => {
 };
 
 // Login user
-export const loginUser = async (credentials) => {
+export const loginUser = async (email, password) => {
   try {
-    const response = await authApi.post('/login', credentials);
-    if (response.data.token) {
+    const response = await authApi.post('/login', {
+      email,
+      password
+    });
+    
+    if (response.data.success) {
       localStorage.setItem('token', response.data.token);
+      return response.data;
     }
-    return response.data;
+    throw new Error(response.data.message || 'Login failed');
   } catch (error) {
     console.error('Login error:', error.response?.data || error.message);
-    throw error;
+    throw error.response?.data || error;
   }
 };
 

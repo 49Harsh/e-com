@@ -32,13 +32,31 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      setLoading(true);
       setError(null);
-      const { user } = await loginUser({ email, password });
-      setUser(user);
-      return user;
+      
+      const response = await loginUser(email, password);
+      
+      if (response.success) {
+        setUser(response.user);
+        localStorage.setItem('token', response.token);
+        toast.success('Login successful!');
+        
+        // Redirect based on user role
+        if (response.user.role === 'admin') {
+          return '/admin';
+        }
+        return '/';
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
     } catch (error) {
-      setError(error.response?.data?.message || 'Login failed');
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
