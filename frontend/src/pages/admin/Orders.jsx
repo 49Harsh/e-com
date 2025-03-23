@@ -4,12 +4,15 @@ import axios from 'axios';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { getAdminOrders, updateOrderStatus } from '../../api/api';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [expandedOrder, setExpandedOrder] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -286,6 +289,57 @@ const Orders = () => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
+  const downloadOrderPDF = (order) => {
+    const doc = new jsPDF();
+    
+    // Add header
+    doc.setFontSize(20);
+    doc.text('Order Details', 15, 20);
+    
+    // Add order info
+    doc.setFontSize(12);
+    doc.text(`Order ID: ${order._id}`, 15, 30);
+    doc.text(`Date: ${formatDate(order.createdAt)}`, 15, 40);
+    doc.text(`Status: ${order.status.toUpperCase()}`, 15, 50);
+    
+    // Add customer info
+    doc.text('Customer Information:', 15, 65);
+    doc.text(`Name: ${order.user?.name || 'N/A'}`, 20, 75);
+    doc.text(`Email: ${order.user?.email || 'N/A'}`, 20, 85);
+    
+    // Add shipping address
+    doc.text('Shipping Address:', 15, 100);
+    if (order.shippingAddress) {
+      doc.text(`${order.shippingAddress.fullName}`, 20, 110);
+      doc.text(`${order.shippingAddress.address}`, 20, 120);
+      doc.text(`${order.shippingAddress.city}, ${order.shippingAddress.state}`, 20, 130);
+      doc.text(`${order.shippingAddress.pincode}`, 20, 140);
+      doc.text(`Phone: ${order.shippingAddress.phone}`, 20, 150);
+    }
+    
+    // Add items table
+    const tableData = order.items.map(item => [
+      item.product?.title || 'N/A',
+      item.size,
+      item.quantity,
+      `₹${item.price}`,
+      `₹${item.price * item.quantity}`
+    ]);
+    
+    doc.autoTable({
+      startY: 170,
+      head: [['Product', 'Size', 'Qty', 'Price', 'Total']],
+      body: tableData,
+    });
+    
+    // Add total
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.text(`Total Amount: ₹${order.totalAmount}`, 15, finalY);
+    
+    // Save PDF
+    doc.save(`order-${order._id}.pdf`);
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -325,51 +379,88 @@ const Orders = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {orders.map((order) => (
-                <tr key={order._id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {order._id.slice(-8)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.user?.name || 'N/A'}
-                    <br />
-                    <span className="text-xs text-gray-400">
-                      {order.user?.email || 'N/A'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(order.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ₹{order.totalAmount}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <select
-                      value={order.status}
-                      onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
-                      className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="processing">Processing</option>
-                      <option value="shipped">Shipped</option>
-                      <option value="delivered">Delivered</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                    <button
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setIsModalOpen(true);
-                      }}
-                      className="mt-2 text-blue-600 hover:text-blue-900"
-                    >
-                      View Details
-                    </button>
-                  </td>
-                </tr>
+                <React.Fragment key={order._id}>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {order._id.slice(-8)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {order.user?.name || 'N/A'}
+                      <br />
+                      <span className="text-xs text-gray-400">
+                        {order.user?.email || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(order.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      ₹{order.totalAmount}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setExpandedOrder(expandedOrder === order._id ? null : order._id)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          {expandedOrder === order._id ? 'Hide Details' : 'View Details'}
+                        </button>
+                        <button
+                          onClick={() => downloadOrderPDF(order)}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          Download PDF
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedOrder === order._id && (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-4">
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <h4 className="font-semibold mb-2">Shipping Address</h4>
+                              <p>{order.shippingAddress?.fullName}</p>
+                              <p>{order.shippingAddress?.address}</p>
+                              <p>{order.shippingAddress?.city}, {order.shippingAddress?.state}</p>
+                              <p>{order.shippingAddress?.pincode}</p>
+                              <p>Phone: {order.shippingAddress?.phone}</p>
+                            </div>
+                            <div>
+                              <h4 className="font-semibold mb-2">Order Items</h4>
+                              {order.items.map((item, index) => (
+                                <div key={index} className="flex justify-between mb-2">
+                                  <span>{item.product?.title} ({item.size})</span>
+                                  <span>₹{item.price} x {item.quantity}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <h4 className="font-semibold mb-2">Update Status</h4>
+                            <select
+                              value={order.status}
+                              onChange={(e) => handleStatusUpdate(order._id, e.target.value)}
+                              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="processing">Processing</option>
+                              <option value="shipped">Shipped</option>
+                              <option value="delivered">Delivered</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
