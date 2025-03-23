@@ -1,12 +1,26 @@
 const Order = require('../models/Order');
 const Cart = require('../models/Cart');
 const Product = require('../models/Product');
+const User = require('../models/User');
 
 // Create new order
 exports.createOrder = async (req, res) => {
   try {
-    const { shippingAddress } = req.body;
+    const { shippingAddress, saveAddress } = req.body;
     
+    // Save address if requested
+    if (saveAddress) {
+      const user = await User.findById(req.user.id);
+      
+      // Add new address to user's addresses
+      user.addresses.push({
+        ...shippingAddress,
+        isDefault: user.addresses.length === 0 // Make first address default
+      });
+      
+      await user.save();
+    }
+
     // Validate shipping address
     if (!shippingAddress || !shippingAddress.fullName || !shippingAddress.address || 
         !shippingAddress.city || !shippingAddress.state || !shippingAddress.pincode || 

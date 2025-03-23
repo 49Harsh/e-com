@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { PDFDocument, rgb } from 'pdf-lib';
+import { saveAs } from 'file-saver';
 
 const Orders = () => {
   const [orders, setOrders] = useState([]);
@@ -67,6 +69,103 @@ const Orders = () => {
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(price);
+  };
+
+  const generateOrderPDF = async (order) => {
+    try {
+      const pdfDoc = await PDFDocument.create();
+      const page = pdfDoc.addPage([600, 800]);
+      const { width, height } = page.getSize();
+
+      // Add content to PDF
+      page.drawText('Order Details', {
+        x: 50,
+        y: height - 50,
+        size: 20
+      });
+
+      page.drawText(`Order ID: ${order._id}`, {
+        x: 50,
+        y: height - 80,
+        size: 12
+      });
+
+      page.drawText(`Customer: ${order.user.name}`, {
+        x: 50,
+        y: height - 100,
+        size: 12
+      });
+
+      // Add more order details...
+      let yPosition = height - 140;
+
+      page.drawText('Items:', {
+        x: 50,
+        y: yPosition,
+        size: 14
+      });
+
+      yPosition -= 30;
+
+      order.items.forEach(item => {
+        page.drawText(`${item.product.title} - ${item.quantity}x - ₹${item.price * item.quantity}`, {
+          x: 50,
+          y: yPosition,
+          size: 12
+        });
+        yPosition -= 20;
+      });
+
+      yPosition -= 20;
+
+      page.drawText('Shipping Address:', {
+        x: 50,
+        y: yPosition,
+        size: 14
+      });
+
+      yPosition -= 30;
+
+      const address = order.shippingAddress;
+      page.drawText(`${address.fullName}`, {
+        x: 50,
+        y: yPosition,
+        size: 12
+      });
+
+      yPosition -= 20;
+
+      page.drawText(`${address.address}`, {
+        x: 50,
+        y: yPosition,
+        size: 12
+      });
+
+      yPosition -= 20;
+
+      page.drawText(`${address.city}, ${address.state} - ${address.pincode}`, {
+        x: 50,
+        y: yPosition,
+        size: 12
+      });
+
+      yPosition -= 40;
+
+      page.drawText(`Total Amount: ₹${order.totalAmount}`, {
+        x: 50,
+        y: yPosition,
+        size: 16
+      });
+
+      // Save the PDF
+      const pdfBytes = await pdfDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      saveAs(blob, `order-${order._id}.pdf`);
+
+      toast.success('Order PDF downloaded successfully');
+    } catch (error) {
+      toast.error('Failed to generate PDF');
+    }
   };
 
   if (loading) {
@@ -158,6 +257,15 @@ const Orders = () => {
                   {formatPrice(order.totalAmount)}
                 </span>
               </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => generateOrderPDF(order)}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Download PDF
+              </button>
             </div>
           </div>
         ))}

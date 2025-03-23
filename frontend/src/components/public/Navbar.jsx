@@ -151,6 +151,55 @@ const Navbar = () => {
               )}
             </button>
           </div>
+
+          {/* Additional links for authenticated users */}
+          <div className="hidden md:flex items-center space-x-4">
+            {user ? (
+              <>
+                <Link
+                  to="/orders"
+                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  My Orders
+                </Link>
+                <Link
+                  to="/"
+                  className={`${
+                    location.pathname === '/'
+                      ? 'border-blue-500 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+                >
+                  Home
+                </Link>
+                <Link
+                  to="/products"
+                  className={`${
+                    location.pathname === '/products'
+                      ? 'border-blue-500 text-gray-900'
+                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+                >
+                  Products
+                </Link>
+              </>
+            ) : (
+              <div className="flex items-center space-x-4">
+                <Link
+                  to="/login"
+                  className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/register"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
+                >
+                  Register
+                </Link>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

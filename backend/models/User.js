@@ -30,7 +30,19 @@ const userSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  addresses: [{
+    fullName: String,
+    address: String,
+    city: String,
+    state: String,
+    pincode: String,
+    phone: String,
+    isDefault: {
+      type: Boolean,
+      default: false
+    }
+  }]
 });
 
 // Encrypt password using bcrypt
