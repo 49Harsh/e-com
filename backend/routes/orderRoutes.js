@@ -8,17 +8,9 @@ const {
   updateOrderStatus
 } = require('../controllers/orderController');
 
-router.use(protect);
-
-router.route('/')
-  .post(createOrder)
-  .get(getUserOrders);
-
-// Admin routes
-router.use(authorize('admin'));
-router.route('/admin')
-  .get(getAllOrders);
-router.route('/admin/:id')
-  .put(updateOrderStatus);
+router.post('/', protect, createOrder);
+router.get('/my-orders', protect, getUserOrders);
+router.get('/admin', protect, authorize('admin'), getAllOrders);
+router.put('/admin/:id', protect, authorize('admin'), updateOrderStatus);
 
 module.exports = router; 

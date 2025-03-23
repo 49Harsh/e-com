@@ -80,4 +80,44 @@ export const deleteProduct = async (id) => {
     throw error;
   }
 };
+
+export const getCart = async () => {
+  try {
+    const response = await jsonApi.get('/cart');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching cart:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const addToCart = async (productId, quantity, size) => {
+  try {
+    const response = await jsonApi.post('/cart', { productId, quantity, size });
+    return response.data;
+  } catch (error) {
+    console.error('Error adding to cart:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const updateCartItem = async (itemId, quantity) => {
+  try {
+    const response = await jsonApi.put('/cart/item', { itemId, quantity });
+    return response.data;
+  } catch (error) {
+    console.error('Error updating cart:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const removeFromCart = async (itemId) => {
+  try {
+    const response = await jsonApi.delete(`/cart/item/${itemId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error removing from cart:', error.response?.data || error.message);
+    throw error;
+  }
+};
   

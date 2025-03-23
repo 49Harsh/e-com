@@ -1,27 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProduct } from '../../api/api';
+import { useProducts } from '../../context/ProductContext';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'react-toastify';
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { addToCart } = useCart();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(0);
-  const { addToCart } = useCart();
-  const { user } = useAuth();
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await getProduct(id);
-        setProduct(response.product);
+        const response = await fetch(`http://localhost:5000/api/v1/products/${id}`);
+        const data = await response.json();
+        if (data.success) {
+          setProduct(data.product);
+          // Set default size if available
+          if (data.product.size && data.product.size.length > 0) {
+            setSelectedSize(data.product.size[0]);
+          }
+        } else {
+          setError('Failed to fetch product');
+        }
       } catch (err) {
         setError(err.message);
       } finally {
@@ -31,14 +39,6 @@ const ProductDetail = () => {
 
     fetchProduct();
   }, [id]);
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
 
   const handleAddToCart = async () => {
     if (!user) {
@@ -60,7 +60,7 @@ const ProductDetail = () => {
     }
   };
 
-  const handleShopNow = async () => {
+  const handleBuyNow = async () => {
     if (!user) {
       toast.error('Please login to continue shopping');
       navigate('/login');
@@ -74,10 +74,18 @@ const ProductDetail = () => {
 
     try {
       await addToCart(product._id, quantity, selectedSize);
-      navigate('/checkout');
+      navigate('/checkout'); // Navigate to checkout page
     } catch (error) {
       toast.error('Failed to process. Please try again.');
     }
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(price);
   };
 
   if (loading) {
@@ -88,18 +96,10 @@ const ProductDetail = () => {
     );
   }
 
-  if (error) {
+  if (error || !product) {
     return (
       <div className="text-center py-8 text-red-500">
-        <p className="text-lg font-medium">{error}</p>
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-lg">Product not found</p>
+        <p className="text-lg font-medium">{error || 'Product not found'}</p>
       </div>
     );
   }
@@ -111,7 +111,7 @@ const ProductDetail = () => {
         <div className="flex flex-col">
           <div className="relative">
             <img
-              src={`http://localhost:5000${product.images[selectedImage].url}`}
+              src={`http://localhost:5000${product.images[0].url}`}
               alt={product.title}
               className="w-full h-96 object-cover rounded-lg"
             />
@@ -119,19 +119,12 @@ const ProductDetail = () => {
           {product.images.length > 1 && (
             <div className="mt-4 grid grid-cols-4 gap-2">
               {product.images.map((image, index) => (
-                <button
+                <img
                   key={index}
-                  onClick={() => setSelectedImage(index)}
-                  className={`relative ${
-                    selectedImage === index ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                >
-                  <img
-                    src={`http://localhost:5000${image.url}`}
-                    alt={`Product ${index + 1}`}
-                    className="w-full h-24 object-cover rounded-md"
-                  />
-                </button>
+                  src={`http://localhost:5000${image.url}`}
+                  alt={`Product ${index + 1}`}
+                  className="w-full h-24 object-cover rounded-md cursor-pointer"
+                />
               ))}
             </div>
           )}
@@ -153,113 +146,77 @@ const ProductDetail = () => {
             )}
           </div>
 
-          {/* Rating */}
-          <div className="mt-3">
-            <div className="flex items-center">
-              <div className="flex items-center">
-                {[0, 1, 2, 3, 4].map((rating) => (
-                  <svg
-                    key={rating}
-                    className={`h-5 w-5 flex-shrink-0 ${
-                      product.rating > rating ? 'text-yellow-400' : 'text-gray-300'
-                    }`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 15.585l-7.07 3.716 1.35-7.87L.18 7.466l7.88-1.145L10 0l2.94 6.321 7.88 1.145-6.1 3.965 1.35 7.87z"
-                    />
-                  </svg>
-                ))}
-              </div>
-              <p className="ml-2 text-sm text-gray-500">{product.rating} out of 5 stars</p>
-            </div>
-          </div>
-
           <div className="mt-6">
-            <h3 className="sr-only">Description</h3>
-            <div className="text-base text-gray-700 space-y-6">
+            <h3 className="text-sm text-gray-600">Description</h3>
+            <div className="mt-4 prose prose-sm text-gray-500">
               {product.description}
             </div>
           </div>
 
+          {/* Size selector */}
           <div className="mt-6">
-            <div className="flex items-center">
-              <h3 className="text-sm text-gray-600">Color:</h3>
-              <p className="ml-2 text-sm text-gray-900">{product.color}</p>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm text-gray-600">Select Size</h3>
             </div>
-          </div>
-
-          <div className="mt-6">
-            <div className="flex items-center">
-              <h3 className="text-sm text-gray-600">Select Size:</h3>
-              <div className="ml-2 flex flex-wrap gap-2">
-                {product.size.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-3 py-1 text-sm font-medium rounded-full ${
-                      selectedSize === size
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center">
-              <h3 className="text-sm text-gray-600">Quantity:</h3>
-              <div className="ml-2 flex items-center">
+            <div className="mt-2 grid grid-cols-4 gap-2">
+              {product.size.map((size) => (
                 <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-2 py-1 bg-gray-100 rounded-l"
+                  key={size}
+                  onClick={() => setSelectedSize(size)}
+                  className={`${
+                    selectedSize === size
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                  } px-4 py-2 text-sm font-medium rounded-md focus:outline-none`}
                 >
-                  -
+                  {size}
                 </button>
-                <span className="px-4 py-1 bg-gray-100">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                  className="px-2 py-1 bg-gray-100 rounded-r"
-                >
-                  +
-                </button>
-              </div>
+              ))}
             </div>
           </div>
 
+          {/* Quantity selector */}
           <div className="mt-6">
-            <div className="flex items-center">
-              <h3 className="text-sm text-gray-600">Stock:</h3>
-              <p className="ml-2 text-sm text-gray-900">{product.stock} units</p>
+            <h3 className="text-sm text-gray-600">Quantity</h3>
+            <div className="mt-2 flex items-center">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="px-3 py-1 border rounded-l-md hover:bg-gray-100"
+              >
+                -
+              </button>
+              <span className="px-4 py-1 border-t border-b">{quantity}</span>
+              <button
+                onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                className="px-3 py-1 border rounded-r-md hover:bg-gray-100"
+              >
+                +
+              </button>
             </div>
           </div>
 
-          {product.featured && (
-            <div className="mt-6">
-              <span className="inline-flex items-center px-3 py-0.5 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
-                Featured Product
-              </span>
-            </div>
-          )}
+          {/* Stock status */}
+          <div className="mt-4">
+            <p className={`text-sm ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {product.stock > 0 ? `${product.stock} units in stock` : 'Out of stock'}
+            </p>
+          </div>
 
+          {/* Action buttons */}
           <div className="mt-8 flex space-x-4">
             <button
               onClick={handleAddToCart}
-              className="flex-1 bg-blue-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-blue-700"
               disabled={product.stock === 0}
+              className="flex-1 bg-blue-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-blue-700 disabled:bg-gray-400"
             >
-              {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+              Add to Cart
             </button>
             <button
-              onClick={handleShopNow}
-              className="flex-1 bg-green-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-green-700"
+              onClick={handleBuyNow}
               disabled={product.stock === 0}
+              className="flex-1 bg-green-600 border border-transparent rounded-md py-3 px-8 flex items-center justify-center text-base font-medium text-white hover:bg-green-700 disabled:bg-gray-400"
             >
-              Shop Now
+              Buy Now
             </button>
           </div>
         </div>

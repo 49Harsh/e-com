@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { toast } from 'react-toastify';
-import axios from 'axios';
+import { getCart, addToCart as apiAddToCart, updateCartItem as apiUpdateCartItem, removeFromCart as apiRemoveFromCart } from '../api/api';
 
 const CartContext = createContext();
 
@@ -17,14 +17,11 @@ export const CartProvider = ({ children }) => {
     
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/v1/cart', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      setCart(response.data.cart);
+      const response = await getCart();
+      setCart(response.cart);
     } catch (error) {
       console.error('Failed to fetch cart:', error);
+      toast.error('Failed to fetch cart');
     } finally {
       setLoading(false);
     }
@@ -33,17 +30,10 @@ export const CartProvider = ({ children }) => {
   const addToCart = async (productId, quantity, size) => {
     try {
       setLoading(true);
-      const response = await axios.post(
-        'http://localhost:5000/api/v1/cart',
-        { productId, quantity, size },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-      setCart(response.data.cart);
-      return response.data.cart;
+      const response = await apiAddToCart(productId, quantity, size);
+      setCart(response.cart);
+      toast.success('Added to cart successfully');
+      return response.cart;
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to add to cart');
       throw error;
@@ -55,16 +45,9 @@ export const CartProvider = ({ children }) => {
   const updateCartItem = async (itemId, quantity) => {
     try {
       setLoading(true);
-      const response = await axios.put(
-        'http://localhost:5000/api/v1/cart/item',
-        { itemId, quantity },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-      setCart(response.data.cart);
+      const response = await apiUpdateCartItem(itemId, quantity);
+      setCart(response.cart);
+      toast.success('Cart updated successfully');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update cart');
     } finally {
@@ -75,15 +58,8 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (itemId) => {
     try {
       setLoading(true);
-      const response = await axios.delete(
-        `http://localhost:5000/api/v1/cart/item/${itemId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
-      setCart(response.data.cart);
+      const response = await apiRemoveFromCart(itemId);
+      setCart(response.cart);
       toast.success('Item removed from cart');
     } catch (error) {
       toast.error('Failed to remove item from cart');

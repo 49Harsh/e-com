@@ -2,72 +2,55 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { cart } = useCart();
+  const { cart, clearCart } = useCart();
   const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     fullName: '',
-    email: '',
-    phone: '',
     address: '',
     city: '',
     state: '',
     pincode: '',
-    paymentMethod: 'cod' // cash on delivery by default
+    phone: ''
   });
 
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0,
-    }).format(price);
-  };
-
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!cart || cart.items.length === 0) {
-      toast.error('Your cart is empty');
-      return;
-    }
+    setLoading(true);
 
     try {
-      setLoading(true);
-      const response = await axios.post(
-        'http://localhost:5000/api/v1/orders',
-        {
-          shippingAddress: {
-            street: formData.address,
-            city: formData.city,
-            state: formData.state,
-            pincode: formData.pincode,
-            phone: formData.phone
-          },
-          paymentMethod: formData.paymentMethod
+      const response = await fetch('http://localhost:5000/api/v1/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      );
+        body: JSON.stringify({
+          shippingAddress: formData
+        })
+      });
 
-      toast.success('Order placed successfully!');
-      navigate('/orders');
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Order placed successfully!');
+        clearCart();
+        navigate('/orders');
+      } else {
+        toast.error(data.message || 'Failed to place order');
+      }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to place order');
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -76,10 +59,10 @@ const Checkout = () => {
   if (!cart || cart.items.length === 0) {
     return (
       <div className="text-center py-8">
-        <h2 className="text-2xl font-semibold mb-4">Your Cart is Empty</h2>
+        <p className="text-lg">Your cart is empty</p>
         <button
           onClick={() => navigate('/products')}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="mt-4 bg-blue-600 text-white px-4 py-2 rounded"
         >
           Continue Shopping
         </button>
@@ -88,156 +71,120 @@ const Checkout = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="max-w-4xl mx-auto p-6">
+      <h2 className="text-2xl font-semibold mb-6">Checkout</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Order Summary */}
         <div>
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            <div className="space-y-4">
-              {cart.items.map((item) => (
-                <div key={item._id} className="flex items-center">
-                  <img
-                    src={`http://localhost:5000${item.product.images[0].url}`}
-                    alt={item.product.title}
-                    className="w-20 h-20 object-cover rounded"
-                  />
-                  <div className="ml-4">
-                    <h3 className="font-medium">{item.product.title}</h3>
-                    <p className="text-gray-600">Size: {item.size}</p>
-                    <p className="text-gray-600">Quantity: {item.quantity}</p>
-                    <p className="text-gray-600">{formatPrice(item.price * item.quantity)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+          <h3 className="text-xl font-medium mb-4">Order Summary</h3>
+          <div className="bg-gray-50 p-4 rounded">
+            {cart.items.map((item) => (
+              <div key={item._id} className="flex justify-between mb-2">
+                <span>{item.product.title} (x{item.quantity})</span>
+                <span>₹{item.product.price * item.quantity}</span>
+              </div>
+            ))}
             <div className="border-t mt-4 pt-4">
-              <div className="flex justify-between text-lg font-semibold">
+              <div className="flex justify-between font-semibold">
                 <span>Total:</span>
-                <span>{formatPrice(cart.total)}</span>
+                <span>₹{cart.totalAmount}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Checkout Form */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4">Shipping Information</h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Full Name</label>
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Phone</label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Address</label>
-              <textarea
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                required
-                rows="3"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
+        {/* Shipping Form */}
+        <div>
+          <h3 className="text-xl font-medium mb-4">Shipping Details</h3>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">City</label>
+                <label className="block text-sm font-medium mb-1">Full Name</label>
                 <input
                   type="text"
-                  name="city"
-                  value={formData.city}
+                  name="fullName"
+                  value={formData.fullName}
                   onChange={handleChange}
                   required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full border rounded p-2"
                 />
               </div>
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700">State</label>
-                <input
-                  type="text"
-                  name="state"
-                  value={formData.state}
+                <label className="block text-sm font-medium mb-1">Address</label>
+                <textarea
+                  name="address"
+                  value={formData.address}
                   onChange={handleChange}
                   required
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="w-full border rounded p-2"
+                  rows="3"
                 />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">City</label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    required
+                    className="w-full border rounded p-2"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">State</label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    required
+                    className="w-full border rounded p-2"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Pincode</label>
+                  <input
+                    type="text"
+                    name="pincode"
+                    value={formData.pincode}
+                    onChange={handleChange}
+                    required
+                    pattern="[0-9]{6}"
+                    className="w-full border rounded p-2"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                    pattern="[0-9]{10}"
+                    className="w-full border rounded p-2"
+                  />
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Pincode</label>
-              <input
-                type="text"
-                name="pincode"
-                value={formData.pincode}
-                onChange={handleChange}
-                required
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Payment Method</label>
-              <select
-                name="paymentMethod"
-                value={formData.paymentMethod}
-                onChange={handleChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="cod">Cash on Delivery</option>
-                <option value="online">Online Payment</option>
-              </select>
-            </div>
-
-            <div className="flex justify-between items-center mt-6">
-              <button
-                type="button"
-                onClick={() => navigate('/cart')}
-                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
-              >
-                Back to Cart
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-400"
-              >
-                {loading ? 'Processing...' : 'Place Order'}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-6 w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
+            >
+              {loading ? 'Placing Order...' : 'Place Order'}
+            </button>
           </form>
         </div>
       </div>
