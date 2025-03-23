@@ -23,13 +23,26 @@ authApi.interceptors.request.use((config) => {
 export const registerCustomer = async (userData) => {
   try {
     const response = await authApi.post('/register/customer', userData);
-    if (response.data.token) {
+    
+    // Store token if registration is successful
+    if (response.data.success && response.data.token) {
       localStorage.setItem('token', response.data.token);
     }
+    
     return response.data;
   } catch (error) {
-    console.error('Customer registration error:', error.response?.data || error.message);
-    throw error;
+    // Log the full error for debugging
+    console.error('Registration error details:', {
+      response: error.response?.data,
+      status: error.response?.status,
+      message: error.message
+    });
+
+    // Throw a more specific error
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    }
+    throw new Error('Registration failed. Please try again.');
   }
 };
 

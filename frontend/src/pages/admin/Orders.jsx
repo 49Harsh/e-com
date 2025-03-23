@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
-import { PDFDocument, rgb } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 
 const Orders = () => {
@@ -76,85 +76,197 @@ const Orders = () => {
       const pdfDoc = await PDFDocument.create();
       const page = pdfDoc.addPage([600, 800]);
       const { width, height } = page.getSize();
+      
+      // Load a standard font
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-      // Add content to PDF
-      page.drawText('Order Details', {
+      // Header
+      page.drawText('Order Invoice', {
         x: 50,
         y: height - 50,
-        size: 20
+        size: 24,
+        font: boldFont
       });
 
+      // Order Details
       page.drawText(`Order ID: ${order._id}`, {
         x: 50,
-        y: height - 80,
-        size: 12
-      });
-
-      page.drawText(`Customer: ${order.user.name}`, {
-        x: 50,
         y: height - 100,
-        size: 12
+        size: 12,
+        font: font
       });
 
-      // Add more order details...
-      let yPosition = height - 140;
-
-      page.drawText('Items:', {
+      page.drawText(`Order Date: ${new Date(order.createdAt).toLocaleDateString()}`, {
         x: 50,
-        y: yPosition,
-        size: 14
+        y: height - 120,
+        size: 12,
+        font: font
       });
 
-      yPosition -= 30;
-
-      order.items.forEach(item => {
-        page.drawText(`${item.product.title} - ${item.quantity}x - ₹${item.price * item.quantity}`, {
-          x: 50,
-          y: yPosition,
-          size: 12
-        });
-        yPosition -= 20;
+      // Customer Details
+      page.drawText('Customer Details:', {
+        x: 50,
+        y: height - 160,
+        size: 14,
+        font: boldFont
       });
 
-      yPosition -= 20;
+      page.drawText(`Name: ${order.user.name}`, {
+        x: 50,
+        y: height - 180,
+        size: 12,
+        font: font
+      });
 
+      page.drawText(`Email: ${order.user.email}`, {
+        x: 50,
+        y: height - 200,
+        size: 12,
+        font: font
+      });
+
+      // Shipping Address
       page.drawText('Shipping Address:', {
         x: 50,
-        y: yPosition,
-        size: 14
+        y: height - 240,
+        size: 14,
+        font: boldFont
       });
-
-      yPosition -= 30;
 
       const address = order.shippingAddress;
       page.drawText(`${address.fullName}`, {
         x: 50,
-        y: yPosition,
-        size: 12
+        y: height - 260,
+        size: 12,
+        font: font
       });
-
-      yPosition -= 20;
 
       page.drawText(`${address.address}`, {
         x: 50,
+        y: height - 280,
+        size: 12,
+        font: font
+      });
+
+      page.drawText(`${address.city}, ${address.state} - ${address.pincode}`, {
+        x: 50,
+        y: height - 300,
+        size: 12,
+        font: font
+      });
+
+      page.drawText(`Phone: ${address.phone}`, {
+        x: 50,
+        y: height - 320,
+        size: 12,
+        font: font
+      });
+
+      // Order Items
+      page.drawText('Order Items:', {
+        x: 50,
+        y: height - 360,
+        size: 14,
+        font: boldFont
+      });
+
+      let yPosition = height - 390;
+
+      // Table Header
+      page.drawText('Product', {
+        x: 50,
         y: yPosition,
-        size: 12
+        size: 12,
+        font: boldFont
+      });
+
+      page.drawText('Size', {
+        x: 250,
+        y: yPosition,
+        size: 12,
+        font: boldFont
+      });
+
+      page.drawText('Qty', {
+        x: 350,
+        y: yPosition,
+        size: 12,
+        font: boldFont
+      });
+
+      page.drawText('Price', {
+        x: 450,
+        y: yPosition,
+        size: 12,
+        font: boldFont
       });
 
       yPosition -= 20;
 
-      page.drawText(`${address.city}, ${address.state} - ${address.pincode}`, {
-        x: 50,
-        y: yPosition,
-        size: 12
+      // Draw items
+      order.items.forEach(item => {
+        page.drawText(item.product.title, {
+          x: 50,
+          y: yPosition,
+          size: 10,
+          font: font,
+          maxWidth: 180
+        });
+
+        page.drawText(item.size, {
+          x: 250,
+          y: yPosition,
+          size: 10,
+          font: font
+        });
+
+        page.drawText(item.quantity.toString(), {
+          x: 350,
+          y: yPosition,
+          size: 10,
+          font: font
+        });
+
+        page.drawText(`₹${item.price * item.quantity}`, {
+          x: 450,
+          y: yPosition,
+          size: 10,
+          font: font
+        });
+
+        yPosition -= 20;
       });
 
-      yPosition -= 40;
+      // Total Amount
+      yPosition -= 20;
+      page.drawLine({
+        start: { x: 50, y: yPosition },
+        end: { x: 550, y: yPosition },
+        thickness: 1
+      });
 
-      page.drawText(`Total Amount: ₹${order.totalAmount}`, {
-        x: 50,
+      yPosition -= 30;
+      page.drawText('Total Amount:', {
+        x: 350,
         y: yPosition,
-        size: 16
+        size: 14,
+        font: boldFont
+      });
+
+      page.drawText(`₹${order.totalAmount}`, {
+        x: 450,
+        y: yPosition,
+        size: 14,
+        font: boldFont
+      });
+
+      // Footer
+      page.drawText('Thank you for shopping with us!', {
+        x: 50,
+        y: 50,
+        size: 12,
+        font: font
       });
 
       // Save the PDF
@@ -164,6 +276,7 @@ const Orders = () => {
 
       toast.success('Order PDF downloaded successfully');
     } catch (error) {
+      console.error('PDF generation error:', error);
       toast.error('Failed to generate PDF');
     }
   };
@@ -262,9 +375,22 @@ const Orders = () => {
             <div className="mt-4 flex justify-end">
               <button
                 onClick={() => generateOrderPDF(order)}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
-                Download PDF
+                <svg 
+                  className="w-5 h-5 mr-2" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth="2" 
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                  />
+                </svg>
+                Download Invoice
               </button>
             </div>
           </div>

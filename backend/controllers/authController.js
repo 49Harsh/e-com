@@ -6,28 +6,63 @@ exports.registerCustomer = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if user exists
-    const userExists = await User.findOne({ email });
-    if (userExists) {
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: 'Email already registered'
+        message: 'This email is already registered. Please use a different email or login.'
       });
     }
 
-    // Create customer
+    // Create user
     const user = await User.create({
       name,
       email,
       password,
-      role: 'customer'
+      role: 'user'
     });
 
-    sendTokenResponse(user, 201, res);
+    // Generate token
+    const token = user.getSignedJwtToken();
+
+    // Send response
+    res.status(201).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
+      message: 'Registration successful!'
+    });
+
   } catch (error) {
-    res.status(400).json({
+    console.error('Registration error:', error);
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'This email is already registered. Please use a different email or login.'
+      });
+    }
+
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(', ')
+      });
+    }
+
+    // Handle other errors
+    res.status(500).json({
       success: false,
-      message: error.message
+      message: 'An error occurred during registration. Please try again.'
     });
   }
 };

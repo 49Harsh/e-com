@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { loginUser, registerCustomer, registerAdmin, logoutUser, getCurrentUser } from '../api/auth';
+import { toast } from 'react-toastify';
 
 const AuthContext = createContext();
 
@@ -43,13 +44,25 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
+      setLoading(true);
       setError(null);
-      const { user } = await registerCustomer(userData);
-      setUser(user);
-      return user;
+      
+      const response = await registerCustomer(userData);
+      
+      if (response.success) {
+        setUser(response.user);
+        toast.success(response.message || 'Registration successful!');
+        return response;
+      } else {
+        throw new Error(response.message || 'Registration failed');
+      }
     } catch (error) {
-      setError(error.response?.data?.message || 'Registration failed');
+      const errorMessage = error.message || 'Registration failed';
+      setError(errorMessage);
+      toast.error(errorMessage);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
