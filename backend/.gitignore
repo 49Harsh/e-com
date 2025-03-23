@@ -1,0 +1,7 @@
+# Dependecies
+node_modules/
+
+# Environment variables
+.env
+
+# Other files and folders you want to ignore
