@@ -120,4 +120,25 @@ export const removeFromCart = async (itemId) => {
     throw error;
   }
 };
+
+// Order related API calls
+export const createOrder = async (orderData) => {
+  try {
+    const response = await jsonApi.post('/orders', orderData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating order:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const getUserOrders = async () => {
+  try {
+    const response = await jsonApi.get('/orders/my-orders');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user orders:', error.response?.data || error.message);
+    throw error;
+  }
+};
   

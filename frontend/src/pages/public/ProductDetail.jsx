@@ -1,37 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useProducts } from '../../context/ProductContext';
-import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
+import { getProduct } from '../../api/api';
 import { toast } from 'react-toastify';
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addToCart } = useCart();
+  const { addItemToCart } = useCart();
+  
   const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/v1/products/${id}`);
-        const data = await response.json();
-        if (data.success) {
-          setProduct(data.product);
-          // Set default size if available
-          if (data.product.size && data.product.size.length > 0) {
-            setSelectedSize(data.product.size[0]);
-          }
-        } else {
-          setError('Failed to fetch product');
+        const response = await getProduct(id);
+        setProduct(response.product);
+        // Set default size if available
+        if (response.product.size && response.product.size.length > 0) {
+          setSelectedSize(response.product.size[0]);
         }
       } catch (err) {
-        setError(err.message);
+        setError('Failed to fetch product details');
+        toast.error('Failed to load product details');
       } finally {
         setLoading(false);
       }
@@ -53,10 +50,10 @@ const ProductDetail = () => {
     }
 
     try {
-      await addToCart(product._id, quantity, selectedSize);
+      await addItemToCart(product._id, quantity, selectedSize);
       toast.success('Added to cart successfully');
     } catch (error) {
-      toast.error('Failed to add to cart');
+      toast.error(error.response?.data?.message || 'Failed to add to cart');
     }
   };
 
@@ -73,10 +70,10 @@ const ProductDetail = () => {
     }
 
     try {
-      await addToCart(product._id, quantity, selectedSize);
-      navigate('/checkout'); // Navigate to checkout page
+      await addItemToCart(product._id, quantity, selectedSize);
+      navigate('/checkout');
     } catch (error) {
-      toast.error('Failed to process. Please try again.');
+      toast.error(error.response?.data?.message || 'Failed to process. Please try again.');
     }
   };
 
@@ -123,7 +120,7 @@ const ProductDetail = () => {
                   key={index}
                   src={`http://localhost:5000${image.url}`}
                   alt={`Product ${index + 1}`}
-                  className="w-full h-24 object-cover rounded-md cursor-pointer"
+                  className="h-24 w-full object-cover rounded-md cursor-pointer"
                 />
               ))}
             </div>
@@ -138,12 +135,14 @@ const ProductDetail = () => {
 
           <div className="mt-3">
             <h2 className="sr-only">Product information</h2>
-            <p className="text-3xl text-gray-900">{formatPrice(product.price)}</p>
-            {product.compareAtPrice && (
-              <p className="mt-1 text-lg text-gray-500 line-through">
-                {formatPrice(product.compareAtPrice)}
-              </p>
-            )}
+            <div className="flex items-center">
+              <p className="text-3xl text-gray-900">{formatPrice(product.price)}</p>
+              {product.compareAtPrice && (
+                <p className="ml-4 text-lg text-gray-500 line-through">
+                  {formatPrice(product.compareAtPrice)}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="mt-6">

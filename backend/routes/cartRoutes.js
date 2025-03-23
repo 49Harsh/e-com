@@ -5,7 +5,8 @@ const {
   getCart,
   addToCart,
   updateCartItem,
-  removeFromCart
+  removeFromCart,
+  clearCart
 } = require('../controllers/cartController');
 
 router.use(protect);
@@ -19,5 +20,7 @@ router.route('/item')
 
 router.route('/item/:itemId')
   .delete(removeFromCart);
+
+router.delete('/', clearCart);
 
 module.exports = router; 

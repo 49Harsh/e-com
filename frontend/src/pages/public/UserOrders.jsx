@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getUserOrders } from '../../api/api';
 import { toast } from 'react-toastify';
 
 const UserOrders = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
   const fetchOrders = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/v1/orders', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      setOrders(response.data.orders);
+      const response = await getUserOrders(); // Using the correct API function
+      if (response.success) {
+        setOrders(response.orders);
+      }
     } catch (error) {
       toast.error('Failed to fetch orders');
     } finally {
@@ -21,9 +23,13 @@ const UserOrders = () => {
     }
   };
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-IN', {
@@ -31,23 +37,6 @@ const UserOrders = () => {
       currency: 'INR',
       maximumFractionDigits: 0,
     }).format(price);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'processing':
-        return 'bg-blue-100 text-blue-800';
-      case 'shipped':
-        return 'bg-purple-100 text-purple-800';
-      case 'delivered':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
   };
 
   if (loading) {
@@ -58,72 +47,81 @@ const UserOrders = () => {
     );
   }
 
+  if (orders.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <h2 className="text-2xl font-semibold mb-4">My Orders</h2>
+        <p className="text-gray-500">No orders found</p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h2 className="text-2xl font-semibold mb-6">My Orders</h2>
-      
-      {orders.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-lg text-gray-600">No orders found</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {orders.map((order) => (
-            <div key={order._id} className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold">Order #{order._id}</h3>
-                  <p className="text-gray-600">
-                    Placed on: {new Date(order.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
-                  {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                </span>
-              </div>
-
-              <div className="border-t pt-4">
-                <div className="space-y-4">
-                  {order.items.map((item) => (
-                    <div key={item._id} className="flex items-center">
-                      <img
-                        src={`http://localhost:5000${item.product.images[0].url}`}
-                        alt={item.product.title}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                      <div className="ml-4">
-                        <p className="font-medium">{item.product.title}</p>
-                        <p className="text-gray-600">
-                          Size: {item.size} | Quantity: {item.quantity}
-                        </p>
-                        <p className="text-gray-600">
-                          Price: {formatPrice(item.price)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border-t pt-4 mt-4">
-                <h4 className="font-medium mb-2">Shipping Address:</h4>
-                <p>{order.shippingAddress.street}</p>
-                <p>
-                  {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.pincode}
+      <div className="space-y-6">
+        {orders.map((order) => (
+          <div key={order._id} className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <p className="text-sm text-gray-500">Order ID: {order._id}</p>
+                <p className="text-sm text-gray-500">
+                  Placed on: {formatDate(order.createdAt)}
                 </p>
-                <p>Phone: {order.shippingAddress.phone}</p>
               </div>
-
-              <div className="border-t pt-4 mt-4">
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Total Amount:</span>
-                  <span className="text-xl font-bold">{formatPrice(order.total)}</span>
-                </div>
+              <div className="px-3 py-1 rounded-full text-sm font-medium" 
+                style={{
+                  backgroundColor: 
+                    order.status === 'Delivered' ? 'rgb(220 252 231)' :
+                    order.status === 'Processing' ? 'rgb(254 249 195)' :
+                    order.status === 'Shipped' ? 'rgb(219 234 254)' :
+                    order.status === 'Cancelled' ? 'rgb(254 226 226)' :
+                    'rgb(229 231 235)',
+                  color:
+                    order.status === 'Delivered' ? 'rgb(22 163 74)' :
+                    order.status === 'Processing' ? 'rgb(161 98 7)' :
+                    order.status === 'Shipped' ? 'rgb(29 78 216)' :
+                    order.status === 'Cancelled' ? 'rgb(220 38 38)' :
+                    'rgb(107 114 128)'
+                }}
+              >
+                {order.status}
               </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className="border-t pt-4">
+              <h3 className="font-medium mb-2">Items:</h3>
+              {order.items.map((item) => (
+                <div key={item._id} className="flex justify-between py-2">
+                  <div>
+                    <p className="font-medium">{item.product.title}</p>
+                    <p className="text-sm text-gray-500">
+                      Size: {item.size} • Quantity: {item.quantity}
+                    </p>
+                  </div>
+                  <p className="font-medium">{formatPrice(item.price * item.quantity)}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t mt-4 pt-4">
+              <h3 className="font-medium mb-2">Shipping Address:</h3>
+              <p>{order.shippingAddress.fullName}</p>
+              <p>{order.shippingAddress.address}</p>
+              <p>{order.shippingAddress.city}, {order.shippingAddress.state}</p>
+              <p>PIN: {order.shippingAddress.pincode}</p>
+              <p>Phone: {order.shippingAddress.phone}</p>
+            </div>
+
+            <div className="border-t mt-4 pt-4">
+              <div className="flex justify-between font-medium">
+                <span>Total Amount:</span>
+                <span>{formatPrice(order.totalAmount)}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

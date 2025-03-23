@@ -170,4 +170,21 @@ exports.removeFromCart = async (req, res) => {
       message: error.message
     });
   }
+};
+
+// Clear cart
+exports.clearCart = async (req, res) => {
+  try {
+    await Cart.findOneAndDelete({ user: req.user.id });
+    
+    res.status(200).json({
+      success: true,
+      message: 'Cart cleared successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to clear cart'
+    });
+  }
 }; 

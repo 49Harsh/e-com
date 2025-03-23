@@ -7,6 +7,16 @@ exports.createOrder = async (req, res) => {
   try {
     const { shippingAddress } = req.body;
     
+    // Validate shipping address
+    if (!shippingAddress || !shippingAddress.fullName || !shippingAddress.address || 
+        !shippingAddress.city || !shippingAddress.state || !shippingAddress.pincode || 
+        !shippingAddress.phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide all shipping details'
+      });
+    }
+
     // Get user's cart
     const cart = await Cart.findOne({ user: req.user.id }).populate('items.product');
     
@@ -15,6 +25,16 @@ exports.createOrder = async (req, res) => {
         success: false,
         message: 'Cart is empty'
       });
+    }
+
+    // Verify all products are in stock
+    for (const item of cart.items) {
+      if (item.product.stock < item.quantity) {
+        return res.status(400).json({
+          success: false,
+          message: `${item.product.title} is out of stock`
+        });
+      }
     }
 
     // Calculate total amount
@@ -38,6 +58,13 @@ exports.createOrder = async (req, res) => {
       totalAmount
     });
 
+    // Update product stock
+    for (const item of cart.items) {
+      await Product.findByIdAndUpdate(item.product._id, {
+        $inc: { stock: -item.quantity }
+      });
+    }
+
     // Clear the cart
     await Cart.findByIdAndDelete(cart._id);
 
@@ -46,9 +73,10 @@ exports.createOrder = async (req, res) => {
       order
     });
   } catch (error) {
+    console.error('Order creation error:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Failed to create order'
     });
   }
 };
@@ -65,9 +93,10 @@ exports.getUserOrders = async (req, res) => {
       orders
     });
   } catch (error) {
+    console.error('Error fetching user orders:', error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: 'Failed to fetch orders'
     });
   }
 };

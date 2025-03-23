@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
+import { createOrder } from '../../api/api';
 import { toast } from 'react-toastify';
 
 const Checkout = () => {
   const navigate = useNavigate();
-  const { cart, clearCart } = useCart();
+  const { cart, clearCart, fetchCart } = useCart();
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -29,28 +30,23 @@ const Checkout = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          shippingAddress: formData
-        })
-      });
+      const orderData = {
+        shippingAddress: formData
+      };
 
-      const data = await response.json();
+      const response = await createOrder(orderData);
 
-      if (data.success) {
-        toast.success('Order placed successfully!');
+      if (response.success) {
         clearCart();
+        toast.success('Order placed successfully!');
         navigate('/orders');
       } else {
-        toast.error(data.message || 'Failed to place order');
+        toast.error(response.message || 'Failed to place order');
       }
     } catch (error) {
-      toast.error('Something went wrong. Please try again.');
+      console.error('Order error:', error);
+      toast.error(error.response?.data?.message || 'Something went wrong. Please try again.');
+      await fetchCart();
     } finally {
       setLoading(false);
     }

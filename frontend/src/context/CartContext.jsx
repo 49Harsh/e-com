@@ -27,45 +27,51 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const addToCart = async (productId, quantity, size) => {
+  const addItemToCart = async (productId, quantity, size) => {
     try {
       setLoading(true);
       const response = await apiAddToCart(productId, quantity, size);
       setCart(response.cart);
-      toast.success('Added to cart successfully');
+      toast.success('Item added to cart');
       return response.cart;
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to add to cart');
+      toast.error(error.response?.data?.message || 'Failed to add item to cart');
       throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const updateCartItem = async (itemId, quantity) => {
+  const updateItem = async (itemId, quantity) => {
     try {
       setLoading(true);
       const response = await apiUpdateCartItem(itemId, quantity);
       setCart(response.cart);
-      toast.success('Cart updated successfully');
+      toast.success('Cart updated');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update cart');
+      throw error;
     } finally {
       setLoading(false);
     }
   };
 
-  const removeFromCart = async (itemId) => {
+  const removeItem = async (itemId) => {
     try {
       setLoading(true);
       const response = await apiRemoveFromCart(itemId);
       setCart(response.cart);
       toast.success('Item removed from cart');
     } catch (error) {
-      toast.error('Failed to remove item from cart');
+      toast.error(error.response?.data?.message || 'Failed to remove item');
+      throw error;
     } finally {
       setLoading(false);
     }
+  };
+
+  const clearCart = () => {
+    setCart(null);
   };
 
   useEffect(() => {
@@ -81,9 +87,10 @@ export const CartProvider = ({ children }) => {
       value={{
         cart,
         loading,
-        addToCart,
-        updateCartItem,
-        removeFromCart,
+        addItemToCart,
+        updateItem,
+        removeItem,
+        clearCart,
         fetchCart
       }}
     >

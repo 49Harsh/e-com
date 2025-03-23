@@ -21,6 +21,7 @@ import Cart from './pages/public/Cart';
 import OrderConfirmation from './pages/public/OrderConfirmation';
 import UserOrders from './pages/public/UserOrders';
 import Checkout from './pages/public/Checkout';
+import AdminOrders from './pages/admin/Orders';
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
                         <Routes>
                           <Route index element={<AdminDashboard />} />
                           <Route path="products" element={<AdminProducts />} />
+                          <Route path="orders" element={<AdminOrders />} />
                           <Route path="add-product" element={<AddProduct />} />
                           <Route path="edit-product/:id" element={<EditProduct />} />
                         </Routes>
